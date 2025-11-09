@@ -3,23 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Player Order Manager (Live)</title>
+  <title>POM (Player Orders Manager)</title>
   <style>
+    :root {
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --text: #222;
+      --subtext: #555;
+      --primary: #0078d7;
+      --accent: #27ae60;
+      --danger: #e74c3c;
+      --pending: #f39c12;
+    }
+
+    body.dark {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text: #e6edf3;
+      --subtext: #9ba3af;
+      --primary: #1f6feb;
+      --accent: #2ecc71;
+      --danger: #e74c3c;
+      --pending: #f1c40f;
+    }
+
+    * {
+      transition: background 0.3s, color 0.3s, border 0.3s;
+    }
+
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
-      background: #f4f6f8;
+      background: var(--bg);
       margin: 0;
       padding: 40px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      color: var(--text);
     }
+
     h1 {
-      color: #333;
+      margin: 0;
+      font-size: 2rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--primary);
+      text-shadow: 0 0 10px rgba(0,120,215,0.3);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 90%;
+      max-width: 700px;
       margin-bottom: 20px;
     }
+
+    .toolbar button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .toolbar button:hover {
+      background: var(--accent);
+    }
+
+    .toolbar .stats {
+      font-size: 14px;
+      color: var(--subtext);
+    }
+
     .order-form {
-      background: #fff;
+      background: var(--card-bg);
       padding: 20px 25px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -28,28 +89,34 @@
       gap: 10px;
       width: 350px;
     }
+
     .order-form input, .order-form textarea, .order-form button {
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid #444;
       font-size: 15px;
       outline: none;
-      transition: all 0.2s ease;
+      background: var(--bg);
+      color: var(--text);
     }
+
     .order-form input:focus, .order-form textarea:focus {
-      border-color: #0078d7;
+      border-color: var(--primary);
       box-shadow: 0 0 0 2px rgba(0,120,215,0.2);
     }
+
     .order-form button {
-      background: #0078d7;
+      background: var(--primary);
       color: white;
       font-weight: bold;
       cursor: pointer;
       border: none;
     }
+
     .order-form button:hover {
-      background: #005fa3;
+      background: var(--accent);
     }
+
     .orders {
       margin-top: 40px;
       width: 90%;
@@ -58,22 +125,27 @@
       flex-direction: column;
       gap: 20px;
     }
+
     .order-card {
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       padding: 20px;
+      border-left: 4px solid var(--primary);
     }
+
     .order-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
+
     .order-header h3 {
       margin: 0;
       font-size: 20px;
-      color: #333;
+      color: var(--text);
     }
+
     .status {
       padding: 5px 12px;
       border-radius: 8px;
@@ -81,29 +153,36 @@
       font-weight: bold;
       color: white;
     }
-    .status.pending { background: #f39c12; }
-    .status.ready { background: #27ae60; }
+
+    .status.pending { background: var(--pending); }
+    .status.ready { background: var(--accent); }
+
     .items {
       list-style: none;
       padding: 0;
       margin-top: 15px;
     }
+
     .items li {
       padding: 8px 10px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #333;
       cursor: pointer;
       transition: all 0.2s;
     }
+
     .items li:last-child { border-bottom: none; }
-    .items li:hover { background: #f0f4f8; }
+
+    .items li:hover { background: rgba(255,255,255,0.05); }
+
     .items li.done {
-      color: #888;
+      color: var(--subtext);
       text-decoration: line-through;
-      background: #fafafa;
+      opacity: 0.7;
     }
+
     .serve-btn {
       margin-top: 15px;
-      background: #e74c3c;
+      background: var(--danger);
       border: none;
       color: white;
       padding: 8px 16px;
@@ -111,13 +190,54 @@
       cursor: pointer;
       font-weight: bold;
     }
+
     .serve-btn:hover {
+      background: #c0392b;
+    }
+
+    .history {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 30px;
+      width: 90%;
+      max-width: 700px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+    }
+
+    .history h2 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+
+    .history-item {
+      font-size: 14px;
+      color: var(--subtext);
+      border-bottom: 1px solid #333;
+      padding: 5px 0;
+    }
+
+    .clear-btn {
+      margin-top: 10px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .clear-btn:hover {
       background: #c0392b;
     }
   </style>
 </head>
 <body>
-  <h1>Player Order Manager (Live)</h1>
+  <h1>POM (Player Orders Manager)</h1>
+  <div class="toolbar">
+    <button id="toggleModeBtn">🌙 Dark Mode</button>
+    <div class="stats">Customers Served: <span id="servedCount">0</span></div>
+  </div>
 
   <div class="order-form">
     <input id="playerName" type="text" placeholder="Player Name" />
@@ -127,6 +247,12 @@
 
   <div class="orders" id="ordersContainer"></div>
 
+  <div class="history" id="historyContainer">
+    <h2>Served Orders History</h2>
+    <div id="historyList"></div>
+    <button class="clear-btn" id="clearHistoryBtn">Clear History</button>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -135,7 +261,17 @@
     const playerNameInput = document.getElementById("playerName");
     const itemsListInput = document.getElementById("itemsList");
     const ordersContainer = document.getElementById("ordersContainer");
+    const toggleModeBtn = document.getElementById("toggleModeBtn");
+    const servedCountEl = document.getElementById("servedCount");
+    const historyList = document.getElementById("historyList");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
     let orders = [];
+    let history = JSON.parse(localStorage.getItem("pomHistory") || "[]");
+    let servedCount = parseInt(localStorage.getItem("pomServedCount") || "0");
+
+    updateHistoryUI();
+    servedCountEl.textContent = servedCount;
 
     socket.on("updateOrders", (serverOrders) => {
       orders = serverOrders;
@@ -180,7 +316,7 @@
         const list = document.createElement("ul");
         list.className = "items";
 
-        order.items.forEach((item, idx) => {
+        order.items.forEach(item => {
           const li = document.createElement("li");
           li.textContent = item.name;
           if (item.done) li.classList.add("done");
@@ -198,12 +334,57 @@
         serve.className = "serve-btn";
         serve.textContent = "Serve Order";
         if (!order.ready) serve.style.display = "none";
-        serve.addEventListener("click", () => socket.emit("removeOrder", order.id));
+        serve.addEventListener("click", () => {
+          addToHistory(order);
+          servedCount++;
+          localStorage.setItem("pomServedCount", servedCount);
+          servedCountEl.textContent = servedCount;
+          socket.emit("removeOrder", order.id);
+        });
         orderCard.appendChild(serve);
 
         ordersContainer.appendChild(orderCard);
       });
     }
+
+    // Dark mode toggle
+    toggleModeBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      const dark = document.body.classList.contains("dark");
+      toggleModeBtn.textContent = dark ? "☀️ Light Mode" : "🌙 Dark Mode";
+      localStorage.setItem("pomTheme", dark ? "dark" : "light");
+    });
+
+    // Load theme from storage
+    if (localStorage.getItem("pomTheme") === "dark") {
+      document.body.classList.add("dark");
+      toggleModeBtn.textContent = "☀️ Light Mode";
+    }
+
+    // History tracking
+    function addToHistory(order) {
+      const time = new Date().toLocaleTimeString();
+      history.push({ player: order.player, time });
+      localStorage.setItem("pomHistory", JSON.stringify(history));
+      updateHistoryUI();
+    }
+
+    function updateHistoryUI() {
+      historyList.innerHTML = history
+        .map(h => `<div class="history-item">${h.time} - ${h.player}</div>`)
+        .join("") || "<i>No orders served yet.</i>";
+    }
+
+    clearHistoryBtn.addEventListener("click", () => {
+      if (confirm("Clear served history and counter?")) {
+        history = [];
+        servedCount = 0;
+        localStorage.removeItem("pomHistory");
+        localStorage.removeItem("pomServedCount");
+        updateHistoryUI();
+        servedCountEl.textContent = servedCount;
+      }
+    });
   </script>
 </body>
 </html>
