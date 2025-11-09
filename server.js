@@ -1,43 +1,52 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: '*', // for demo use; restrict in production
-    methods: ['GET', 'POST']
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-const PORT = process.env.PORT || 3000;
+let orders = []; // Shared in-memory state
 
-// Serve static files from "public"
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Optional: a health check route for Render
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Serve frontend
+app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Socket.IO logic
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+io.on("connection", (socket) => {
+  console.log(`✅ Client connected: ${socket.id}`);
 
-  socket.emit('message', 'Welcome to the Socket.IO demo!');
+  // Send current orders on connect
+  socket.emit("updateOrders", orders);
 
-  socket.on('chat', (msg) => {
-    io.emit('chat', msg);
+  socket.on("addOrder", (order) => {
+    orders.push(order);
+    io.emit("updateOrders", orders);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+  socket.on("updateOrder", (updated) => {
+    const idx = orders.findIndex(o => o.id === updated.id);
+    if (idx !== -1) orders[idx] = updated;
+    io.emit("updateOrders", orders);
+  });
+
+  socket.on("removeOrder", (id) => {
+    orders = orders.filter(o => o.id !== id);
+    io.emit("updateOrders", orders);
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`❌ Client disconnected: ${socket.id}`);
   });
 });
 
-// Important: listen on 0.0.0.0 for Render
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+// Use Render’s dynamic port
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, "0.0.0.0", () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
