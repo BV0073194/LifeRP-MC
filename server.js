@@ -6,63 +6,61 @@ const path = require("path");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: { origin: "*" }
 });
 
+// --- Shared in-memory state ---
+let orders = [];
+let history = [];
+let servedCount = 0;
+
+// Serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ---------- SERVER STATE ----------
-let state = {
-  orders: [],
-  servedCount: 0,
-  history: [],
-};
-
-// ---------- SOCKET LOGIC ----------
+// Socket.IO
 io.on("connection", (socket) => {
   console.log(`✅ Client connected: ${socket.id}`);
 
-  // Send current state to new client
-  socket.emit("updateState", state);
+  // Send current state
+  socket.emit("init", { orders, history, servedCount });
 
   // Add new order
   socket.on("addOrder", (order) => {
-    state.orders.push(order);
-    io.emit("updateState", state);
+    orders.push(order);
+    io.emit("updateOrders", orders);
   });
 
-  // Update order (mark items ready)
-  socket.on("updateOrder", (updatedOrder) => {
-    const index = state.orders.findIndex(o => o.id === updatedOrder.id);
-    if (index !== -1) state.orders[index] = updatedOrder;
-    io.emit("updateState", state);
+  // Update order (item done/ready)
+  socket.on("updateOrder", (updated) => {
+    const idx = orders.findIndex(o => o.id === updated.id);
+    if (idx !== -1) orders[idx] = updated;
+    io.emit("updateOrders", orders);
   });
 
   // Serve (remove) order
   socket.on("removeOrder", (id) => {
-    const index = state.orders.findIndex(o => o.id === id);
-    if (index !== -1) {
-      const order = state.orders[index];
-      state.orders.splice(index, 1);
-      const time = new Date().toLocaleTimeString();
-      state.history.push({
+    const order = orders.find(o => o.id === id);
+    if (order) {
+      orders = orders.filter(o => o.id !== id);
+      servedCount++;
+      history.push({
         player: order.player,
         items: order.items.map(i => i.name).join(", "),
-        time,
+        time: new Date().toLocaleTimeString()
       });
-      state.servedCount++;
-      io.emit("updateState", state);
+      io.emit("updateOrders", orders);
+      io.emit("updateHistory", { history, servedCount });
     }
   });
 
-  // Clear daily stats/history
+  // Clear history & reset counter
   socket.on("clearHistory", () => {
-    state.history = [];
-    state.servedCount = 0;
-    io.emit("updateState", state);
+    history = [];
+    servedCount = 0;
+    io.emit("updateHistory", { history, servedCount });
   });
 
   socket.on("disconnect", () => {
@@ -70,7 +68,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ---------- RENDER DEPLOY ----------
+// Use Render’s dynamic port
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () =>
   console.log(`🚀 Server running on port ${PORT}`)
