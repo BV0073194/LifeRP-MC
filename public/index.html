@@ -3,90 +3,207 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Socket.IO Demo</title>
+  <title>Player Order Manager (Live)</title>
   <style>
     body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2rem;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .order-form {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 350px;
+    }
+    .order-form input, .order-form textarea, .order-form button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .order-form input:focus, .order-form textarea:focus {
+      border-color: #0078d7;
+      box-shadow: 0 0 0 2px rgba(0,120,215,0.2);
+    }
+    .order-form button {
+      background: #0078d7;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+    }
+    .order-form button:hover {
+      background: #005fa3;
+    }
+    .orders {
+      margin-top: 40px;
+      width: 90%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .order-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      padding: 20px;
+    }
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .order-header h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+    }
+    .status {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      color: white;
+    }
+    .status.pending { background: #f39c12; }
+    .status.ready { background: #27ae60; }
+    .items {
+      list-style: none;
+      padding: 0;
+      margin-top: 15px;
+    }
+    .items li {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .items li:last-child { border-bottom: none; }
+    .items li:hover { background: #f0f4f8; }
+    .items li.done {
+      color: #888;
+      text-decoration: line-through;
       background: #fafafa;
     }
-    input {
-      padding: 0.5rem;
-      margin-right: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button {
-      padding: 0.5rem 1rem;
+    .serve-btn {
+      margin-top: 15px;
+      background: #e74c3c;
       border: none;
-      border-radius: 6px;
-      background: #007bff;
       color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    #messages {
-      margin-top: 1rem;
-      text-align: left;
-      max-width: 400px;
-      margin-inline: auto;
-      background: white;
-      padding: 1rem;
+      padding: 8px 16px;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      overflow-y: auto;
-      max-height: 300px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .serve-btn:hover {
+      background: #c0392b;
     }
   </style>
 </head>
 <body>
-  <h1>Socket.IO Live Chat Demo</h1>
-  <div>
-    <input id="msg" placeholder="Type message..." />
-    <button id="send">Send</button>
-  </div>
-  <div id="messages"></div>
+  <h1>Player Order Manager (Live)</h1>
 
-  <!-- Socket.IO client script -->
+  <div class="order-form">
+    <input id="playerName" type="text" placeholder="Player Name" />
+    <textarea id="itemsList" placeholder="Items (comma separated)"></textarea>
+    <button id="addOrderBtn">Add Order</button>
+  </div>
+
+  <div class="orders" id="ordersContainer"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Connect automatically to same origin (works on Render and locally)
     const socket = io();
 
-    const msgInput = document.getElementById('msg');
-    const sendBtn = document.getElementById('send');
-    const messages = document.getElementById('messages');
+    const addOrderBtn = document.getElementById("addOrderBtn");
+    const playerNameInput = document.getElementById("playerName");
+    const itemsListInput = document.getElementById("itemsList");
+    const ordersContainer = document.getElementById("ordersContainer");
+    let orders = [];
 
-    // Helper to add messages
-    function addMessage(text) {
-      const el = document.createElement('div');
-      el.textContent = text;
-      messages.appendChild(el);
-      messages.scrollTop = messages.scrollHeight;
-    }
-
-    // Events
-    socket.on('connect', () => addMessage(`✅ Connected as ${socket.id}`));
-    socket.on('disconnect', () => addMessage('❌ Disconnected from server'));
-    socket.on('message', addMessage);
-    socket.on('chat', addMessage);
-
-    // Send button
-    sendBtn.onclick = () => {
-      const text = msgInput.value.trim();
-      if (text) {
-        socket.emit('chat', text);
-        msgInput.value = '';
-      }
-    };
-
-    // Send on Enter key
-    msgInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendBtn.click();
+    socket.on("updateOrders", (serverOrders) => {
+      orders = serverOrders;
+      renderOrders();
     });
+
+    addOrderBtn.addEventListener("click", () => {
+      const player = playerNameInput.value.trim();
+      const items = itemsListInput.value.split(",").map(i => i.trim()).filter(i => i);
+      if (!player || items.length === 0) return alert("Please fill all fields.");
+
+      const newOrder = {
+        id: Date.now(),
+        player,
+        items: items.map(i => ({ name: i, done: false })),
+        ready: false
+      };
+      socket.emit("addOrder", newOrder);
+      playerNameInput.value = "";
+      itemsListInput.value = "";
+    });
+
+    function renderOrders() {
+      ordersContainer.innerHTML = "";
+      orders.forEach(order => {
+        const orderCard = document.createElement("div");
+        orderCard.className = "order-card";
+
+        const header = document.createElement("div");
+        header.className = "order-header";
+        const title = document.createElement("h3");
+        title.textContent = order.player;
+
+        const status = document.createElement("span");
+        status.className = "status " + (order.ready ? "ready" : "pending");
+        status.textContent = order.ready ? "Ready" : "Pending";
+
+        header.appendChild(title);
+        header.appendChild(status);
+        orderCard.appendChild(header);
+
+        const list = document.createElement("ul");
+        list.className = "items";
+
+        order.items.forEach((item, idx) => {
+          const li = document.createElement("li");
+          li.textContent = item.name;
+          if (item.done) li.classList.add("done");
+          li.addEventListener("click", () => {
+            item.done = !item.done;
+            order.ready = order.items.every(i => i.done);
+            socket.emit("updateOrder", order);
+          });
+          list.appendChild(li);
+        });
+
+        orderCard.appendChild(list);
+
+        const serve = document.createElement("button");
+        serve.className = "serve-btn";
+        serve.textContent = "Serve Order";
+        if (!order.ready) serve.style.display = "none";
+        serve.addEventListener("click", () => socket.emit("removeOrder", order.id));
+        orderCard.appendChild(serve);
+
+        ordersContainer.appendChild(orderCard);
+      });
+    }
   </script>
 </body>
 </html>
