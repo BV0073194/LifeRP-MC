@@ -361,17 +361,23 @@
       toggleModeBtn.textContent = "☀️ Light Mode";
     }
 
-    // History tracking
+    // History tracking with item list
     function addToHistory(order) {
       const time = new Date().toLocaleTimeString();
-      history.push({ player: order.player, time });
+      const itemList = order.items.map(i => i.name).join(", ");
+      history.push({ player: order.player, items: itemList, time });
       localStorage.setItem("pomHistory", JSON.stringify(history));
       updateHistoryUI();
     }
 
     function updateHistoryUI() {
       historyList.innerHTML = history
-        .map(h => `<div class="history-item">${h.time} - ${h.player}</div>`)
+        .map(h => `
+          <div class="history-item">
+            <strong>${h.player}</strong> @ ${h.time}<br>
+            <small>Items: ${h.items}</small>
+          </div>
+        `)
         .join("") || "<i>No orders served yet.</i>";
     }
 
