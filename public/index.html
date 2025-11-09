@@ -1,12 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Socket.IO Demo</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; }
-    input { padding: 0.5rem; margin-right: 0.5rem; }
-    #messages { margin-top: 1rem; text-align: left; max-width: 400px; margin-inline: auto; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: #fafafa;
+    }
+    input {
+      padding: 0.5rem;
+      margin-right: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #messages {
+      margin-top: 1rem;
+      text-align: left;
+      max-width: 400px;
+      margin-inline: auto;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      max-height: 300px;
+    }
   </style>
 </head>
 <body>
@@ -17,30 +50,43 @@
   </div>
   <div id="messages"></div>
 
+  <!-- Socket.IO client script -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    // Connect automatically to same origin (works on Render and locally)
     const socket = io();
+
     const msgInput = document.getElementById('msg');
     const sendBtn = document.getElementById('send');
     const messages = document.getElementById('messages');
 
-    socket.on('message', (text) => {
+    // Helper to add messages
+    function addMessage(text) {
       const el = document.createElement('div');
       el.textContent = text;
       messages.appendChild(el);
-    });
+      messages.scrollTop = messages.scrollHeight;
+    }
 
-    socket.on('chat', (text) => {
-      const el = document.createElement('div');
-      el.textContent = text;
-      messages.appendChild(el);
-    });
+    // Events
+    socket.on('connect', () => addMessage(`✅ Connected as ${socket.id}`));
+    socket.on('disconnect', () => addMessage('❌ Disconnected from server'));
+    socket.on('message', addMessage);
+    socket.on('chat', addMessage);
 
+    // Send button
     sendBtn.onclick = () => {
       const text = msgInput.value.trim();
-      if (text) socket.emit('chat', text);
-      msgInput.value = '';
+      if (text) {
+        socket.emit('chat', text);
+        msgInput.value = '';
+      }
     };
+
+    // Send on Enter key
+    msgInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
   </script>
 </body>
 </html>
