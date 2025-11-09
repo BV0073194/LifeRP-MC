@@ -254,9 +254,10 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-
+  
     const addOrderBtn = document.getElementById("addOrderBtn");
     const playerNameInput = document.getElementById("playerName");
     const itemsListInput = document.getElementById("itemsList");
@@ -265,24 +266,36 @@
     const servedCountEl = document.getElementById("servedCount");
     const historyList = document.getElementById("historyList");
     const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-
+  
     let orders = [];
-    let history = JSON.parse(localStorage.getItem("pomHistory") || "[]");
-    let servedCount = parseInt(localStorage.getItem("pomServedCount") || "0");
-
-    updateHistoryUI();
-    servedCountEl.textContent = servedCount;
-
+    let history = [];
+    let servedCount = 0;
+  
+    // Initial sync
+    socket.on("init", (data) => {
+      orders = data.orders;
+      history = data.history;
+      servedCount = data.servedCount;
+      renderOrders();
+      updateHistoryUI();
+    });
+  
     socket.on("updateOrders", (serverOrders) => {
       orders = serverOrders;
       renderOrders();
     });
-
+  
+    socket.on("updateHistory", (data) => {
+      history = data.history;
+      servedCount = data.servedCount;
+      updateHistoryUI();
+    });
+  
     addOrderBtn.addEventListener("click", () => {
       const player = playerNameInput.value.trim();
       const items = itemsListInput.value.split(",").map(i => i.trim()).filter(i => i);
       if (!player || items.length === 0) return alert("Please fill all fields.");
-
+  
       const newOrder = {
         id: Date.now(),
         player,
@@ -293,29 +306,28 @@
       playerNameInput.value = "";
       itemsListInput.value = "";
     });
-
+  
     function renderOrders() {
       ordersContainer.innerHTML = "";
       orders.forEach(order => {
-        const orderCard = document.createElement("div");
-        orderCard.className = "order-card";
-
+        const card = document.createElement("div");
+        card.className = "order-card";
+  
         const header = document.createElement("div");
         header.className = "order-header";
         const title = document.createElement("h3");
         title.textContent = order.player;
-
+  
         const status = document.createElement("span");
         status.className = "status " + (order.ready ? "ready" : "pending");
         status.textContent = order.ready ? "Ready" : "Pending";
-
+  
         header.appendChild(title);
         header.appendChild(status);
-        orderCard.appendChild(header);
-
+        card.appendChild(header);
+  
         const list = document.createElement("ul");
         list.className = "items";
-
         order.items.forEach(item => {
           const li = document.createElement("li");
           li.textContent = item.name;
@@ -327,70 +339,47 @@
           });
           list.appendChild(li);
         });
-
-        orderCard.appendChild(list);
-
+        card.appendChild(list);
+  
         const serve = document.createElement("button");
         serve.className = "serve-btn";
         serve.textContent = "Serve Order";
         if (!order.ready) serve.style.display = "none";
-        serve.addEventListener("click", () => {
-          addToHistory(order);
-          servedCount++;
-          localStorage.setItem("pomServedCount", servedCount);
-          servedCountEl.textContent = servedCount;
-          socket.emit("removeOrder", order.id);
-        });
-        orderCard.appendChild(serve);
-
-        ordersContainer.appendChild(orderCard);
+        serve.addEventListener("click", () => socket.emit("removeOrder", order.id));
+        card.appendChild(serve);
+  
+        ordersContainer.appendChild(card);
       });
     }
-
-    // Dark mode toggle
+  
+    function updateHistoryUI() {
+      servedCountEl.textContent = servedCount;
+      historyList.innerHTML = history.length
+        ? history.map(h => `
+            <div class="history-item">
+              <strong>${h.player}</strong> @ ${h.time}<br>
+              <small>Items: ${h.items}</small>
+            </div>`).join("")
+        : "<i>No orders served yet today.</i>";
+    }
+  
+    clearHistoryBtn.addEventListener("click", () => {
+      if (confirm("Clear served history and reset counter?")) {
+        socket.emit("clearHistory");
+      }
+    });
+  
+    // Dark mode
     toggleModeBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark");
       const dark = document.body.classList.contains("dark");
       toggleModeBtn.textContent = dark ? "☀️ Light Mode" : "🌙 Dark Mode";
       localStorage.setItem("pomTheme", dark ? "dark" : "light");
     });
-
-    // Load theme from storage
     if (localStorage.getItem("pomTheme") === "dark") {
       document.body.classList.add("dark");
       toggleModeBtn.textContent = "☀️ Light Mode";
     }
-
-    // History tracking with item list
-    function addToHistory(order) {
-      const time = new Date().toLocaleTimeString();
-      const itemList = order.items.map(i => i.name).join(", ");
-      history.push({ player: order.player, items: itemList, time });
-      localStorage.setItem("pomHistory", JSON.stringify(history));
-      updateHistoryUI();
-    }
-
-    function updateHistoryUI() {
-      historyList.innerHTML = history
-        .map(h => `
-          <div class="history-item">
-            <strong>${h.player}</strong> @ ${h.time}<br>
-            <small>Items: ${h.items}</small>
-          </div>
-        `)
-        .join("") || "<i>No orders served yet today.</i>";
-    }
-
-    clearHistoryBtn.addEventListener("click", () => {
-      if (confirm("Clear served history and counter?")) {
-        history = [];
-        servedCount = 0;
-        localStorage.removeItem("pomHistory");
-        localStorage.removeItem("pomServedCount");
-        updateHistoryUI();
-        servedCountEl.textContent = servedCount;
-      }
-    });
   </script>
 </body>
 </html>
